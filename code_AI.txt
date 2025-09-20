@@ -1,0 +1,82 @@
+# ========================================
+# Image Classification Project using MobileNetV2
+# ========================================
+
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.utils import to_categorical
+
+# --------------------------
+# Load your dataset
+# --------------------------
+# Example placeholders - replace with your actual data
+# X_train, X_test: numpy arrays of shape (num_samples, 128, 128, 3)
+# y_train, y_test: numpy arrays of shape (num_samples,) with class labels 0-8
+
+# X_train, X_test, y_train, y_test = load_your_data_here()
+
+num_classes = 9
+batch_size = 32
+epochs = 15
+
+# --------------------------
+# One-hot encode labels
+# --------------------------
+y_train_onehot = to_categorical(y_train, num_classes)
+y_test_onehot = to_categorical(y_test, num_classes)
+
+# --------------------------
+# Data augmentation
+# --------------------------
+datagen = ImageDataGenerator(
+    rotation_range=20,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    horizontal_flip=True,
+    zoom_range=0.1
+)
+
+# --------------------------
+# MobileNetV2 base model
+# --------------------------
+base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
+base_model.trainable = False  # Freeze base model
+
+# --------------------------
+# Build the model
+# --------------------------
+inputs = Input(shape=(128, 128, 3))
+x = base_model(inputs, training=False)
+x = GlobalAveragePooling2D()(x)
+x = Dropout(0.3)(x)
+outputs = Dense(num_classes, activation='softmax')(x)
+model = Model(inputs, outputs)
+
+# --------------------------
+# Compile the model
+# --------------------------
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# --------------------------
+# Train the model
+# --------------------------
+history = model.fit(
+    datagen.flow(X_train, y_train_onehot, batch_size=batch_size),
+    validation_data=(X_test, y_test_onehot),
+    epochs=epochs
+)
+
+# --------------------------
+# Evaluate the model
+# --------------------------
+test_loss, test_acc = model.evaluate(X_test, y_test_onehot)
+print(f"Test Accuracy: {test_acc:.4f}")
+
+# --------------------------
+# Optional: Save the model
+# --------------------------
+model.save("mobilenetv2_128x128_9classes.h5")
